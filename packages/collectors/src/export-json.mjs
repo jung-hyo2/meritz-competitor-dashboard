@@ -1,4 +1,4 @@
-// SQLite 데이터를 JSON 파일로 내보내는 스크립트
+﻿// SQLite 데이터를 JSON 파일로 내보내는 스크립트
 // 실행: node packages/collectors/src/export-json.mjs
 import Database from 'better-sqlite3';
 import fs from 'node:fs';

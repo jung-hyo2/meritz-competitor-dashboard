@@ -22,7 +22,7 @@ const CONFIG_PATH = path.join(ROOT, 'config/competitors.json');
 const TOKEN = process.env.META_ACCESS_TOKEN;
 if (!TOKEN) {
   console.error('Missing META_ACCESS_TOKEN env var.');
-  console.error('Get one from https://developers.facebook.com ??App ??Marketing API ??Tools (scope: ads_read)');
+  console.error('Get one from https://developers.facebook.com → App → Marketing API → Tools (scope: ads_read)');
   process.exit(1);
 }
 
@@ -54,7 +54,7 @@ function inferFormatFromUrl(snapshotUrl) {
   if (!snapshotUrl) return null;
   // Snapshot URLs often contain hints; we'll fall back to 'display' if unknown
   if (/video|movie|reel/i.test(snapshotUrl)) return 'video';
-  return 'display'; // unknown image/video ??display covers static creatives in Meta
+  return 'display'; // unknown image/video — display covers static creatives in Meta
 }
 
 async function fetchPageAds(pageId) {
@@ -111,9 +111,9 @@ for (const c of conf.competitors) {
       competitor_key: c.key,
       format: inferFormatFromUrl(m.ad_snapshot_url),
       ad_agency: null,
-      copy_text: [copyBody, linkTitle, linkDesc].filter(Boolean).join(' 쨌 ') || null,
+      copy_text: [copyBody, linkTitle, linkDesc].filter(Boolean).join(' · ') || null,
       cta_text: cta,
-      landing_url: null, // Meta hides target URL behind redirect in ad_snapshot_url; resolving is expensive ??phase 2
+      landing_url: null, // Meta hides target URL behind redirect in ad_snapshot_url; resolving is expensive — phase 2
       thumbnail_url: null,
       image_urls: null,
       video_urls: null,
@@ -137,4 +137,3 @@ console.log('\n=== Meta collection complete ===');
 console.log(`Snapshot: ${snapId}`);
 console.log(`Total ads: ${totals.n}   Active: ${actives.n}`);
 db.close();
-

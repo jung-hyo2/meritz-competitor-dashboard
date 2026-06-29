@@ -64,7 +64,7 @@ async function fetchYoutubeLanding(ytId) {
     if (m) {
       try { desc = JSON.parse('"' + m[1] + '"'); } catch {}
     }
-    // 2) Universal App Campaign signature ??Play Store URL
+    // 2) Universal App Campaign signature → Play Store URL
     const appM = desc.match(/VENDOR_GOOGLE_MARKET:([\w.]+)/);
     if (appM) return `https://play.google.com/store/apps/details?id=${appM[1]}`;
     // 3) iOS App marker
@@ -119,8 +119,8 @@ async function processOne(page, item) {
   try {
     metadata = await page.evaluate(() => {
       const t = document.body.innerText;
-      const m1 = t.match(/愿묎퀬鍮??쒓났:\s*([^\n\r]+)/);
-      const m2 = t.match(/?뺤떇:\s*([^\n\r]+)/);
+      const m1 = t.match(/광고비 제공:\s*([^\n\r]+)/);
+      const m2 = t.match(/형식:\s*([^\n\r]+)/);
       return { agency: m1 ? m1[1].trim() : null, format_text: m2 ? m2[1].trim() : null };
     });
   } catch {}
@@ -176,4 +176,3 @@ const haveAgency = db.prepare(`SELECT COUNT(*) AS n FROM ad WHERE channel='googl
 console.log(`\n[enrich] complete in ${Math.round((Date.now() - start) / 1000)}s`);
 console.log(`[enrich] now have: thumbnail=${haveThumb.n}, agency=${haveAgency.n}`);
 db.close();
-

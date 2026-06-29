@@ -28,7 +28,7 @@ const rows = db.prepare(`
     ${forceArg ? '' : "AND thumbnail_url NOT LIKE '/thumbs/%'"}
 `).all();
 
-console.log(`Meta ?몃꽕???ㅼ슫濡쒕뱶 ??? ${rows.length}嫄?);
+console.log(`Meta 썸네일 다운로드 대상: ${rows.length}건`);
 
 function download(srcUrl, destPath) {
   return new Promise((resolve, reject) => {
@@ -67,10 +67,10 @@ async function processChunk(chunk) {
       await download(row.thumbnail_url, destPath);
       updateThumb.run(`/thumbs/${destName}`, row.id);
       done++;
-      process.stdout.write(`\r?꾨즺: ${done}  ?ㅽ뙣: ${failed}  ?⑥?: ${rows.length - done - failed}`);
+      process.stdout.write(`\r완료: ${done}  실패: ${failed}  남은: ${rows.length - done - failed}`);
     } catch (e) {
       failed++;
-      process.stdout.write(`\r?꾨즺: ${done}  ?ㅽ뙣: ${failed}  ?⑥?: ${rows.length - done - failed}`);
+      process.stdout.write(`\r완료: ${done}  실패: ${failed}  남은: ${rows.length - done - failed}`);
     }
   }));
 }
@@ -79,7 +79,6 @@ for (let i = 0; i < rows.length; i += CONCURRENCY) {
   await processChunk(rows.slice(i, i + CONCURRENCY));
 }
 
-console.log(`\n\n=== Meta ?몃꽕???ㅼ슫濡쒕뱶 ?꾨즺 ===`);
-console.log(`?깃났: ${done}  ?ㅽ뙣: ${failed}`);
+console.log(`\n\n=== Meta 썸네일 다운로드 완료 ===`);
+console.log(`성공: ${done}  실패: ${failed}`);
 db.close();
-

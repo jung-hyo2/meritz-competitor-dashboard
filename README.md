@@ -1,104 +1,107 @@
-# 키움증권 경쟁사 광고 모니터링 대시보드 (MVP)
+# 메리츠증권 경쟁사 광고 모니터링 대시보드
 
-매일 10:00 / 15:00 KST에 6개 경쟁 증권사의 Meta + Google 활성 광고를 수집해 KPI·갤러리 형태로 보여주는 대시보드.
-
-## MVP 상태 (2026-05-11 기준)
-
-| 구성 | 상태 |
-|---|---|
-| **Google Ads Transparency 수집** | ✅ 작동 — 4,296건 적재 검증 |
-| **Meta Ad Library API 수집** | ✅ 코드 완성 — `META_ACCESS_TOKEN` env 받으면 즉시 실행 |
-| **DB (SQLite, Postgres 호환 스키마)** | ✅ |
-| **Diff 엔진 (신규/종료/계속)** | ✅ |
-| **대시보드 UI (Next.js + Tailwind)** | ✅ |
-| **광고 디테일 enrichment (썸네일·LP URL·카피)** | ⏳ Phase 2 |
-| **자동 PDF 클라이언트 리포트** | ⏳ Phase 2 |
-| **Cloud Scheduler / 운영 배포** | ⏳ 사용자 인프라 결정 후 |
+매일 10:00 / 15:00 KST에 7개 경쟁 증권사의 Meta + Google 활성 광고를 자동 수집해 KPI·갤러리 형태로 보여주는 대시보드.
 
 ## 모니터링 대상
 
-| 경쟁사 | Meta Page | Google Advertiser (Primary) | 활성 광고 (수집 시점) |
-|---|---|---|---:|
-| 삼성증권 | `319384881497144` | `AR11621934095679881217` | **1,760** |
-| 미래에셋증권 | `170679759615120` | `AR11442509105290280961` | **1,526** |
-| NH투자증권 | `130795396974886` | `AR04004909127795998721` ⚠️ alias `엔에이치투자증권` | **348** |
-| 한국투자증권 | `306222562786526` | `AR14106116241651400705` | **298** |
-| KB증권 | `526540400777484` | `AR07030169028924538881` | **154** |
-| 토스증권 | `103399848375983` | `AR06938601451455250433` | **48** |
-| (본인) 키움증권 | `131281780274622` | `AR16987959307796480001` | **162** |
+| 구분 | 경쟁사 | Meta Page ID | Google Advertiser (Primary) |
+|---|---|---|---|
+| **클라이언트** | 메리츠증권 | _(미확인)_ | _(미확인)_ |
+| 경쟁사 | 키움증권 | `131281780274622` | `AR16987959307796480001` |
+| 경쟁사 | 미래에셋증권 | `170679759615120` | `AR11442509105290280961` |
+| 경쟁사 | 삼성증권 | `319384881497144` | `AR11621934095679881217` |
+| 경쟁사 | NH투자증권 | `130795396974886` | `AR04004909127795998721` |
+| 경쟁사 | KB증권 | `526540400777484` | `AR07030169028924538881` |
+| 경쟁사 | 토스증권 | `103399848375983` | `AR06938601451455250433` |
+| 경쟁사 | 한국투자증권 | `306222562786526` | `AR14106116241651400705` |
 
-> 카카오페이증권은 Meta·Google에 별도 advertiser가 없어 모니터링 대상에서 제외 (2026-05-11 결정).
+> 메리츠증권 본인의 Meta page_id 및 Google advertiser_id는 확보 후 `config/competitors.json`에 추가
 
-## 발견된 인사이트
+## 기술 스택
 
-- **삼성증권의 매우 짧은 광고 수명 (중간값 0.2일)** — 약 1,760건 중 절반이 5시간 이내 운영. 자동화된 다수 A/B 변형 패턴.
-- **미래에셋·KB증권은 운영기간 길게 가져감** (median 23-30일) — 검증된 메인 소재 중심.
-- **Google이 Meta보다 광고량 압도적** — 7사 합산 Meta ≈ 60건, Google ≈ 4,300건.
-- **토스증권 Meta 0건 + Google 48건만**으로 한국 시장 활동량 낮은 편 → Naver/Kakao 등 한국 채널에 집중 추정.
+| 레이어 | 기술 |
+|---|---|
+| 수집 | Playwright (헤드리스 Chromium) |
+| 저장 | SQLite (`data/dashboard.sqlite`) |
+| 대시보드 | Next.js 15 + Tailwind CSS + React 19 |
+| 자동화 | GitHub Actions (평일 10:00 / 15:00 KST) |
 
 ## 디렉터리 구조
 
 ```
 config/
-  competitors.json           # 6사 + 키움 식별자
+  competitors.json           # 경쟁사 식별자 (Meta page_id, Google advertiser_id)
 packages/
-  db/                        # 스키마 + 시드 + DB 헬퍼
+  db/                        # SQLite 스키마 + 시드 + DB 헬퍼
   collectors/
-    src/google.mjs           # Google 수집 (Playwright + RPC 가로채기)
-    src/meta.mjs             # Meta 수집 (Graph API, 토큰 필요)
+    src/google.mjs           # Google Ads Transparency 수집 (Playwright + RPC 가로채기)
+    src/meta-scrape.mjs      # Meta Ad Library 수집 (Playwright, 토큰 불필요)
+    src/meta.mjs             # Meta Ad Library 수집 (Graph API, 토큰 방식)
+    src/export-json.mjs      # SQLite → JSON 내보내기 (대시보드 갱신)
   diff/
-    src/run.mjs              # 최근 2 스냅샷 비교
+    src/run.mjs              # 최근 2 스냅샷 비교 (신규/종료 광고 추출)
   dashboard/                 # Next.js 앱 (포트 3300)
-data/dashboard.sqlite        # 로컬 DB
-logs/                        # 컬렉션 / dev 서버 로그
-recon/                       # 정찰 산출물 (재현 가능)
+data/
+  dashboard.sqlite           # 로컬 DB (gitignore)
 ```
 
-## 실행 방법
+## 로컬 실행
 
 ```bash
-# 의존성
+# 1. 의존성 설치
 npm install
+npx playwright install chromium
 
-# DB 초기화 (스키마 + 시드)
-node packages/db/src/init.mjs
+# 2. DB 초기화
+npm run db:init
 
-# Google 수집 (전체 6사, ~5분)
-node packages/collectors/src/google.mjs
-# 또는 단일 경쟁사
-node packages/collectors/src/google.mjs --only=toss
+# 3. 광고 수집
+npm run collect:meta       # Meta Ad Library (토큰 불필요)
+npm run collect:google     # Google Ads Transparency
 
-# Meta 수집 — META_ACCESS_TOKEN 환경변수 필요
-$env:META_ACCESS_TOKEN="EAAxxx..."         # PowerShell
-export META_ACCESS_TOKEN=EAAxxx...          # bash
-node packages/collectors/src/meta.mjs
+# 4. 대시보드용 JSON 내보내기
+npm run export:json
 
-# 두 스냅샷 비교 (신규/종료 광고)
-node packages/diff/src/run.mjs
-
-# 대시보드 dev 서버
-npm --workspace=@kcd/dashboard run dev
+# 5. 대시보드 실행
+npm run dashboard:dev
 # → http://localhost:3300
 ```
 
-## 사용자가 다음으로 해야 할 것
+## 자동화 (GitHub Actions)
 
-1. **Meta Marketing API 토큰 발급**
-   - https://developers.facebook.com → 앱 생성 → Marketing API 권한 (`ads_read`)
-   - 토큰 받으면 `META_ACCESS_TOKEN` env로 설정하고 `meta.mjs` 실행
-2. **클라우드 인프라 결정**
-   - 권장: Supabase Postgres + Cloudflare R2 + Vercel(대시보드) + Cloud Run(수집 worker) + Cloud Scheduler(cron)
-   - 결정되면 SQLite → Postgres 마이그레이션 + 수집기 컨테이너화 진행
-3. **Phase 2 우선순위 결정** (택일)
-   - (a) 광고 썸네일/카피/CTA 디테일 enrichment
-   - (b) 자동 PDF 클라이언트 리포트
-   - (c) Naver/Kakao 별도 수집 파이프라인 (수동 스크린샷 업로드 등)
+`.github/workflows/collect.yml`이 평일 오전 10시 / 오후 3시(KST)에 자동 실행됩니다.
 
-## Phase 2 후보 작업
+수집 순서:
+1. Google 수집 → 썸네일 enrichment
+2. Meta 수집 → 썸네일 다운로드
+3. JSON 내보내기
+4. git commit & push → 대시보드 자동 갱신
 
-- 광고 디테일 enrichment: 각 광고의 transparency 페이지를 fetch해 YouTube 썸네일, 카피, CTA, LP URL 추출 (~4,300건 첫 실행, 이후 신규 광고만 추가 fetch)
-- 카피 임베딩 + 유사 광고 그룹핑 (pgvector)
-- Slack/이메일 알림 (신규/종료 광고 발생 시)
-- 자동 PDF/PPT 클라이언트 리포트
-- Naver 검색결과 캡처 + OCR
-- 카카오 비즈보드 수동 업로드 인터페이스
+## 메리츠증권 ID 추가 방법
+
+메리츠증권 공식 Meta / Google 광고 계정이 생기면 아래 파일에 ID를 추가합니다.
+
+**`config/competitors.json`**
+```json
+{
+  "key": "meritz",
+  "meta": { "page_id": "여기에_페이지_ID" },
+  "google": { "advertiser_ids": ["AR..."] }
+}
+```
+
+추가 후 `npm run db:init` 재실행.
+
+## npm 스크립트
+
+| 명령어 | 설명 |
+|---|---|
+| `npm run db:init` | DB 스키마 초기화 + 경쟁사 시드 |
+| `npm run collect:meta` | Meta Ad Library 스크래핑 |
+| `npm run collect:google` | Google Ads Transparency 수집 |
+| `npm run collect:all` | Meta + Google 순차 실행 |
+| `npm run export:json` | DB → JSON 내보내기 (대시보드 반영) |
+| `npm run diff` | 최근 2회 스냅샷 비교 |
+| `npm run dashboard:dev` | 대시보드 개발 서버 (포트 3300) |
+| `npm run enrich:google:v2` | Google 광고 썸네일 수집 |
+| `npm run enrich:meta:thumbs` | Meta 광고 썸네일 다운로드 |

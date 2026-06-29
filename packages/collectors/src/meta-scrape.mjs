@@ -52,17 +52,17 @@ function decodeFbLink(href) {
 }
 
 function parseStartDate(text) {
-  // "2026. 5. 5.??寃뚯옱 ?쒖옉?? ??2026-05-05
-  const m = text?.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.???寃뚯옱 ?쒖옉/);
+  // "2026. 5. 5.에 게재 시작함" → 2026-05-05
+  const m = text?.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?에 게재 시작/);
   if (!m) return null;
   return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}T00:00:00.000Z`;
 }
 
 async function dismissCookie(page) {
   for (const s of [
-    'div[aria-label="紐⑤뱺 荑좏궎 ?덉슜"]',
-    'div[aria-label="?꾩닔 ??ぉ留??덉슜"]',
-    'button:has-text("紐⑤뱺 荑좏궎 ?덉슜")',
+    'div[aria-label="모든 쿠키 허용"]',
+    'div[aria-label="필수 항목만 허용"]',
+    'button:has-text("모든 쿠키 허용")',
     'button:has-text("Allow all cookies")',
   ]) {
     const b = page.locator(s).first();
@@ -78,7 +78,7 @@ async function scrollToBottom(page) {
   let prev = -1;
   let empty = 0;
   for (let i = 0; i < MAX_SCROLL_PASSES; i++) {
-    const count = await page.evaluate(() => (document.body.innerText.match(/?쇱씠釉뚮윭由?ID:\s*\d+/g) || []).length);
+    const count = await page.evaluate(() => (document.body.innerText.match(/라이브러리 ID:\s*\d+/g) || []).length);
     if (count === prev) {
       empty++;
       if (empty >= STOP_AFTER_EMPTY_PASSES) break;
@@ -92,12 +92,12 @@ async function scrollToBottom(page) {
 async function extractCards(page) {
   return await page.evaluate(() => {
     // First: map every <video> back to its enclosing libId by walking up.
-    const videoByLib = new Map(); // libId ??{src, poster}
+    const videoByLib = new Map(); // libId → {src, poster}
     document.querySelectorAll('video').forEach((v) => {
       let el = v;
       for (let i = 0; i < 30 && el; i++, el = el.parentElement) {
         const t = el.innerText || '';
-        const m = t.match(/?쇱씠釉뚮윭由?ID:\s*(\d+)/);
+        const m = t.match(/라이브러리 ID:\s*(\d+)/);
         if (m) {
           if (!videoByLib.has(m[1]) && v.src) videoByLib.set(m[1], { src: v.src, poster: v.poster || null });
           break;
@@ -108,11 +108,11 @@ async function extractCards(page) {
     const out = [];
     document.querySelectorAll('div').forEach((el) => {
       const t = el.innerText || '';
-      const idMatches = t.match(/?쇱씠釉뚮윭由?ID:\s*(\d+)/g);
+      const idMatches = t.match(/라이브러리 ID:\s*(\d+)/g);
       if (!idMatches || idMatches.length !== 1) return;
       if (t.length < 80 || t.length > 4000) return;
-      if (!/寃뚯옱 ?쒖옉/.test(t)) return;
-      const lib = t.match(/?쇱씠釉뚮윭由?ID:\s*(\d+)/)?.[1];
+      if (!/게재 시작/.test(t)) return;
+      const lib = t.match(/라이브러리 ID:\s*(\d+)/)?.[1];
       if (!lib) return;
       const imgs = [...el.querySelectorAll('img')]
         .map((i) => i.src)
@@ -146,33 +146,33 @@ async function extractCards(page) {
 
 function extractCopyText(fullText) {
   // Strip noise headers/footers
-  // Pattern: "...?쒕∼?ㅼ슫 ?닿린 / 愿묎퀬 ?곸꽭 ?뺣낫 蹂닿린 / <Brand> 愿묎퀬  <COPY>  <CTA TEXT>"
-  // We take the substring between "愿묎퀬 ?곸꽭 ?뺣낫 蹂닿린" (or "?붿빟 ?몃? ?ы빆 蹂닿린") and the LAST occurrence of "Learn More" / "???뚯븘蹂닿린" etc.
+  // Pattern: "...드롭다운 열기 / 광고 상세 정보 보기 / <Brand> 광고  <COPY>  <CTA TEXT>"
+  // We take the substring between "광고 상세 정보 보기" (or "요약 세부 사항 보기") and the LAST occurrence of "Learn More" / "더 알아보기" etc.
   let s = fullText.replace(/\r/g, '');
   // remove platform-icon zero-width chars
-  s = s.replace(/[?뗢롡?/g, '');
-  // Trim everything up to "愿묎퀬 ?곸꽭 ?뺣낫 蹂닿린" or similar
-  s = s.replace(/^[\s\S]*?(?:愿묎퀬 ?곸꽭 ?뺣낫 蹂닿린|?붿빟 ?몃? ?ы빆 蹂닿린)/, '');
-  // Drop trailing "Learn More" / "???뚯븘蹂닿린" line and below
-  s = s.replace(/(Learn More|???뚯븘蹂닿린|吏湲??좎껌?섍린|?뚯썝媛??援щℓ?섍린|?덉빟?섍린|臾몄쓽?섍린|???ㅼ슫濡쒕뱶|?먯꽭???뚯븘蹂닿린|吏湲??쒖옉?섍린)[\s\S]*$/, '');
-  // Drop leading "<Brand> 愿묎퀬" line if present
-  s = s.replace(/^\s*\S+\s+愿묎퀬\s*/, '').trim();
+  s = s.replace(/[​‎‏]/g, '');
+  // Trim everything up to "광고 상세 정보 보기" or similar
+  s = s.replace(/^[\s\S]*?(?:광고 상세 정보 보기|요약 세부 사항 보기)/, '');
+  // Drop trailing "Learn More" / "더 알아보기" line and below
+  s = s.replace(/(Learn More|더 알아보기|지금 신청하기|회원가입|구매하기|예약하기|문의하기|앱 다운로드|자세히 알아보기|지금 시작하기)[\s\S]*$/, '');
+  // Drop leading "<Brand> 광고" line if present
+  s = s.replace(/^\s*\S+\s+광고\s*/, '').trim();
   return s.trim().slice(0, 800) || null;
 }
 
 function pickLandingLink(links) {
   // CTA links almost always contain "Learn More" or similar
-  const ctaPatterns = /Learn More|???뚯븘蹂닿린|吏湲??좎껌|?뚯썝媛??援щℓ?섍린|?덉빟?섍린|臾몄쓽?섍린|???ㅼ슫濡쒕뱶|?먯꽭???뚯븘蹂닿린|吏湲??쒖옉|蹂대윭媛湲?;
+  const ctaPatterns = /Learn More|더 알아보기|지금 신청|회원가입|구매하기|예약하기|문의하기|앱 다운로드|자세히 알아보기|지금 시작|보러가기/;
   const cta = links.find((l) => ctaPatterns.test(l.text));
   return cta ? decodeFbLink(cta.href) : decodeFbLink(links[0]?.href);
 }
 
 function pickCtaText(links) {
-  const ctaPatterns = /Learn More|???뚯븘蹂닿린|吏湲??좎껌|?뚯썝媛??援щℓ?섍린|?덉빟?섍린|臾몄쓽?섍린|???ㅼ슫濡쒕뱶|?먯꽭???뚯븘蹂닿린|吏湲??쒖옉|蹂대윭媛湲?;
+  const ctaPatterns = /Learn More|더 알아보기|지금 신청|회원가입|구매하기|예약하기|문의하기|앱 다운로드|자세히 알아보기|지금 시작|보러가기/;
   const cta = links.find((l) => ctaPatterns.test(l.text));
   if (!cta) return null;
   const lines = cta.text.split('\n').map((s) => s.trim()).filter(Boolean);
-  // CTA text is typically the LAST line ("Learn More" / "???뚯븘蹂닿린")
+  // CTA text is typically the LAST line ("Learn More" / "더 알아보기")
   return lines[lines.length - 1] || null;
 }
 
@@ -284,4 +284,3 @@ console.log(`Total ads in DB: ${totals.n}   Active: ${actives.n}`);
 console.log('Per competitor:');
 for (const r of perCompetitor) console.log(`  ${r.name.padEnd(10)} ${r.n}`);
 db.close();
-

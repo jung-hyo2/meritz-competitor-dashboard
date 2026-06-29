@@ -81,7 +81,7 @@ async function collectAdvertiser(page, arId, competitor_key) {
     await page.waitForTimeout(1300);
     if (seen.size === prev) {
       emptyPasses++;
-      // small "kick" ??scroll up then back down to retrigger virtualized loader
+      // small "kick" — scroll up then back down to retrigger virtualized loader
       await page.evaluate(() => window.scrollBy(0, -400));
       await page.waitForTimeout(300);
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
@@ -196,4 +196,3 @@ const perComp = db
 for (const r of perComp) console.log(`  ${r.name_kr.padEnd(10)}  active=${r.active}  total=${r.total}`);
 
 db.close();
-

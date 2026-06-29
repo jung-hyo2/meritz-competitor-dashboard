@@ -2,9 +2,9 @@
 // Strategy per ad:
 //   1. Visit transparency page
 //   2. Wait up to MAX_YT_WAIT_MS for YouTube embed request
-//   3. If YouTube found ??thumbnail = https://i.ytimg.com/vi/{id}/hqdefault.jpg
-//   4. If not found ??screenshot .creative-container element ??save JPEG ??thumbnail = /thumbs/{id}.jpg
-//   Skips format=1 (text) ads ??no visual content.
+//   3. If YouTube found → thumbnail = https://i.ytimg.com/vi/{id}/hqdefault.jpg
+//   4. If not found → screenshot .creative-container element → save JPEG → thumbnail = /thumbs/{id}.jpg
+//   Skips format=1 (text) ads — no visual content.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -114,7 +114,7 @@ async function processOne(page, item) {
   const metaRead = async () => {
     try {
       const t = await page.evaluate(() => document.body.innerText);
-      const m1 = t.match(/愿묎퀬鍮??쒓났:\s*([^\n\r]+)/);
+      const m1 = t.match(/광고비 제공:\s*([^\n\r]+)/);
       if (m1) agency = m1[1].trim();
     } catch {}
   };
@@ -230,4 +230,3 @@ const elapsed = Math.round((Date.now() - start) / 1000);
 console.log(`\n[enrichv2] complete in ${elapsed}s`);
 console.log(`[enrichv2] total thumbnails in DB: ${haveThumb.n}  (yt=${ytCount} new, screenshot=${shotCount} new this run)`);
 db.close();
-
